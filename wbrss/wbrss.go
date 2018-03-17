@@ -2,12 +2,13 @@ package wbrss
 
 import (
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
 	"log"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
-	"strconv"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 const (
@@ -65,7 +66,6 @@ func GetRss(uid string) string {
 	return fmt.Sprintf(RSS_TEMPLATE, name, uid, name, time.Now().String(), formatWbList(wbs))
 }
 
-
 func getDesp(input string) string {
 	input = strings.TrimSpace(input)
 	input = strings.Replace(input, "thumbnail", "large", -1)
@@ -75,43 +75,38 @@ func getDesp(input string) string {
 func getTitle(input string) string {
 	input = strings.TrimSpace(input)
 	if len([]rune(input)) > 24 {
-		input = string([]rune(input)[0: 24]) + "..."
+		input = string([]rune(input)[0:24]) + "..."
 	}
 	return input
 }
 
 func getPubDate(input string) string {
 	now := time.Now()
-
+	defer recover()
 	minutesAgo, _ := regexp.Compile(`(\d+)分钟前`)
 	hourAndMinute, _ := regexp.Compile(`今天 (\d+):(\d+)`)
 	mdhm, _ := regexp.Compile(`(\d+)月(\d+)日 (\d+):(\d+)`)
-
-	if m := minutesAgo.FindString(input); m != "" {
-		if i, err := strconv.Atoi(m); err == nil {
+	if m := minutesAgo.FindStringSubmatch(input); m != nil {
+		if i, err := strconv.Atoi(m[1]); err == nil {
 			return now.Add(time.Duration(int64(-1*i) * int64(time.Minute))).String()
 		}
 	}
 
-	if ms := hourAndMinute.FindAllString(input, -1); ms != nil {
-		if len(ms) >= 2 {
-			hour, he := strconv.Atoi(ms[0])
-			minute, me := strconv.Atoi(ms[1])
-			if he == nil && me == nil {
-				return time.Date(now.Year(), now.Month(), now.Day(), hour, minute, 0, 0, time.UTC).String()
-			}
+	if ms := hourAndMinute.FindStringSubmatch(input); ms != nil {
+		hour, he := strconv.Atoi(ms[1])
+		minute, me := strconv.Atoi(ms[2])
+		if he == nil && me == nil {
+			return time.Date(now.Year(), now.Month(), now.Day(), hour, minute, 0, 0, time.UTC).String()
 		}
 	}
 
-	if ms := mdhm.FindAllString(input, -1); ms != nil {
-		if len(ms) >= 4 {
-			month, moe := strconv.Atoi(ms[1])
-			day, de := strconv.Atoi(ms[1])
-			hour, he := strconv.Atoi(ms[2])
-			minute, me := strconv.Atoi(ms[3])
-			if he == nil && me == nil && moe == nil && de == nil {
-				return time.Date(now.Year(), time.Month(month), day, hour, minute, 0, 0, time.UTC).String()
-			}
+	if ms := mdhm.FindStringSubmatch(input); ms != nil {
+		month, moe := strconv.Atoi(ms[1])
+		day, de := strconv.Atoi(ms[2])
+		hour, he := strconv.Atoi(ms[3])
+		minute, me := strconv.Atoi(ms[4])
+		if he == nil && me == nil && moe == nil && de == nil {
+			return time.Date(now.Year(), time.Month(month), day, hour, minute, 0, 0, time.UTC).String()
 		}
 	}
 	return input
